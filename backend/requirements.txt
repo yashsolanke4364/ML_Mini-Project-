@@ -1,0 +1,11 @@
+# API framework and CORS
+Flask>=3.0.0
+flask-cors>=4.0.0
+
+# Model inference and image preprocessing
+tensorflow>=2.16.0
+numpy>=1.26.0
+Pillow>=10.0.0
+
+# Tests
+pytest>=8.0.0
