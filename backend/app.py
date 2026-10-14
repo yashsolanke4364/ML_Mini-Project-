@@ -59,7 +59,13 @@ def create_app():
         result = {
             "status": "healthy" if loaded else "unavailable",
             "model_loaded": loaded,
-            "model_path": str(predict.MODEL_PATH),
+            "model_file": predict.MODEL_PATH.name,
+            "model_size_bytes": (
+                predict.MODEL_PATH.stat().st_size
+                if predict.MODEL_PATH.is_file()
+                else None
+            ),
+            "model_load_seconds": predict.MODEL_LOAD_SECONDS,
         }
         if not loaded:
             result["error"] = predict.MODEL_LOAD_ERROR or "The model is not loaded."

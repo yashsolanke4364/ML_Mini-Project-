@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: mnist-digit-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 1 --timeout 120 backend.app:app
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.1
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: TF_NUM_INTRAOP_THREADS
+        value: 1
+      - key: TF_NUM_INTEROP_THREADS
+        value: 1

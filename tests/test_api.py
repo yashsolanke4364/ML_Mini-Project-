@@ -48,8 +48,16 @@ def test_health_endpoint_when_model_is_loaded(client):
     response = client.get("/api/health")
 
     assert response.status_code == 200
-    assert response.get_json()["status"] == "healthy"
-    assert response.get_json()["model_loaded"] is True
+    result = response.get_json()
+    assert result["status"] == "healthy"
+    assert result["model_loaded"] is True
+    assert result["model_file"] == "mnist_cnn.keras"
+    expected_size = (
+        backend_app.predict.MODEL_PATH.stat().st_size
+        if backend_app.predict.MODEL_PATH.is_file()
+        else None
+    )
+    assert result["model_size_bytes"] == expected_size
 
 
 def test_health_endpoint_when_model_is_missing(client, monkeypatch):
@@ -206,3 +214,22 @@ def test_non_local_frontend_origin_is_not_allowed(client):
 
     assert response.status_code == 200
     assert "Access-Control-Allow-Origin" not in response.headers
+
+
+def test_configured_production_frontend_origins_are_allowed(monkeypatch):
+    monkeypatch.setenv(
+        "ALLOWED_ORIGINS",
+        "https://digits.example,https://preview.example",
+    )
+    app = create_app()
+    app.config["TESTING"] = True
+    with app.test_client() as test_client:
+        response = test_client.options(
+            "/api/health",
+            headers={
+                "Origin": "https://digits.example",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+
+    assert response.headers["Access-Control-Allow-Origin"] == "https://digits.example"

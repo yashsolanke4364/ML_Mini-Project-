@@ -355,8 +355,8 @@ python -m pytest tests\test_api.py tests\test_export_evaluation.py -q
   frontend over HTTP rather than `file://`, and check the browser console for
   CORS or network errors.
 - **Port already in use:** Stop the other process using port 5000 or 5500, or
-  configure a different backend `PORT`. Update the frontend API base URL if
-  the backend port is changed.
+  configure a different backend `PORT`. For local development, update the
+  local API port in `frontend/runtime-config.js` if the backend port changes.
 - **Image rejected:** Use a valid, non-empty PNG or JPEG containing a clearly
   visible digit. Very large or blank images are rejected.
 - **TensorFlow installation fails:** Check Python/platform support in the
@@ -364,6 +364,127 @@ python -m pytest tests\test_api.py tests\test_export_evaluation.py -q
   environment.
 - **Charts do not render:** Chart.js is loaded from a CDN; verify network
   access. The notebook-generated PNG plots do not require Chart.js.
+- **Vercel build fails:** Set `MNIST_API_BASE_URL` in the Vercel Production
+  environment to the Render HTTPS origin only, without an API path, query, or
+  credentials; then redeploy.
+- **Deployed API returns 503 / health check fails:** Inspect Render deploy
+  logs, verify the checked-in model exists in the deployed commit, and confirm
+  the selected instance has enough RAM. The health endpoint reports model
+  load state and duration.
+- **Deployed browser reports CORS errors:** Set Render `ALLOWED_ORIGINS` to
+  the exact deployed Vercel origin(s), with no trailing slash, then redeploy
+  the backend. Preview-deployment domains need to be added separately if used.
+- **First API request is slow:** Render's free service may have spun down;
+  allow its wake-up interval. Requests that time out or cause restarts can
+  indicate insufficient instance memory or CPU.
+
+## Online deployment (Vercel frontend + Render API)
+
+The repository includes [`vercel.json`](./vercel.json), a build-time frontend
+configuration script, and [`render.yaml`](./render.yaml) for deployment
+preparation. The frontend gets its API base URL from `MNIST_API_BASE_URL` at
+Vercel build time. Localhost detection exists only in the local runtime
+configuration; the production build requires an absolute HTTPS backend origin.
+The model archive is tracked in Git and is loaded from `models/mnist_cnn.keras`
+when the Flask/Gunicorn application starts.
+
+### Deploy the Flask backend to Render
+
+1. Push this repository and the tracked model file to GitHub.
+2. In Render, create a **Blueprint** from the repository and review
+   `render.yaml`. It specifies Python 3.12.1, installs
+   `backend/requirements.txt`, starts one Gunicorn worker, and checks
+   `/api/health`.
+3. Set the Render service environment variable `ALLOWED_ORIGINS` to the exact
+   Vercel production origin, for example
+   `https://your-project.vercel.app` (no path or trailing slash). If you use a
+   custom frontend domain, include that exact origin too, comma-separated.
+4. Deploy and wait until the Render health check reports healthy. Use the
+   `.onrender.com` URL assigned by Render as the backend origin; do not paste a
+   placeholder into the frontend.
+
+The production start command is:
+
+```sh
+gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 1 --timeout 120 backend.app:app
+```
+
+Render runs the app on Linux. The model is included in the repository
+(currently 5,708,170 bytes / 5.44 MiB), so it is present in the checkout at
+startup; no external model download or persistent disk is required. The
+Blueprint sets TensorFlow intra/inter-op thread counts to one to reduce CPU and
+memory pressure. Keep a single worker: each additional worker loads another
+TensorFlow runtime and model into memory.
+
+### Deploy the static frontend to Vercel
+
+1. Import the same GitHub repository into Vercel, with the repository root as
+   the project root. `vercel.json` selects static output in `frontend/`.
+2. Add the environment variable `MNIST_API_BASE_URL` for the **Production**
+   environment using the actual Render backend origin, such as
+   `https://your-service.onrender.com` (origin only; no `/api` suffix).
+3. Deploy. The build command validates HTTPS and writes the production URL into
+   `frontend/runtime-config.js` in the build output. Redeploy after changing
+   this environment variable.
+4. Copy the actual Vercel production origin into Render's `ALLOWED_ORIGINS`
+   setting and redeploy the backend if needed.
+
+### Validate the deployment
+
+Do not call the app deployed until these requests succeed against the assigned
+provider URLs:
+
+```powershell
+$api = "https://YOUR-ACTUAL-SERVICE.onrender.com"
+Invoke-RestMethod "$api/api/health"
+Invoke-RestMethod "$api/api/evaluation"
+```
+
+The health response should contain `status: healthy`, `model_loaded: true`,
+`model_size_bytes`, and `model_load_seconds`. For an end-to-end prediction,
+open the deployed Vercel URL, draw a digit, and select **Predict digit**. Check
+that the browser network panel shows a successful `POST /api/predict`, a digit
+and probabilities appear, and the console has no CORS/network errors. You can
+also send a real image file with the PowerShell API example above, substituting
+the deployed API URL. A successful health check alone does not verify
+prediction or CORS from the deployed frontend.
+
+### Resource, compatibility, and cost notes
+
+- **Model archive:** 5.44 MiB. The Keras `.keras` archive is committed to Git so
+  Render receives it during deploy. Check repository/Git provider limits again
+  if the model is replaced or grows.
+- **Python dependencies:** backend requirements bound Flask, Flask-CORS,
+  TensorFlow (`>=2.16,<2.21`), NumPy (`>=1.26,<2.2`), Pillow, and Gunicorn.
+  This avoids TensorFlow/NumPy 2.2+ incompatibility and keeps Python 3.12 in
+  the supported deployment range. Confirm the final dependency resolver/build
+  log in Render after every dependency change.
+- **Memory and cold start:** TensorFlow's runtime requires substantially more
+  memory than the 5.44 MiB model file. On this Windows development machine,
+  Python 3.12.1 / TensorFlow 2.20.0 cold Python import plus app/model startup
+  took 15.6-20.6 seconds; loading the model itself took 0.77-1.20 seconds, and
+  observed process peak RSS was 360-370 MiB through one prediction. These are
+  local measurements, not Render measurements. Use one worker. The health
+  endpoint exposes model-load duration; measure peak RSS and cold-start
+  latency on the selected Render instance after deployment. If its memory
+  limit leaves little headroom, logs show OOM/restarts, or health checks time
+  out, use a larger paid instance or another platform with enough RAM.
+- **Render free service:** currently free web services spin down after 15
+  minutes without traffic, may take about a minute to wake, have ephemeral
+  storage, and share a 750 free-instance-hour monthly workspace allowance.
+  They can be restarted or suspended when limits are reached; suitable for
+  demos, not production reliability. Recheck current quotas, RAM/CPU, outbound
+  bandwidth, and pricing before selecting a plan.
+- **Vercel Hobby:** currently free for personal projects with monthly usage
+  limits. Confirm current eligibility, transfer/build/request quotas, and plan
+  terms in your account before deployment.
+- **Costs change:** no paid resources are required by this repository
+  configuration, but free-tier availability and limits can change. Check
+  provider dashboards and official [Render free service
+  limitations](https://render.com/docs/free),
+  [Render compute plans and pricing](https://render.com/docs/compute-plans),
+  [Render pricing](https://render.com/pricing), and
+  [Vercel Hobby plan](https://vercel.com/docs/plans/hobby) before use.
 
 ## References
 

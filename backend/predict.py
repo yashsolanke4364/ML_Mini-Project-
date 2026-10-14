@@ -6,6 +6,7 @@ import io
 import logging
 import os
 import re
+import time
 import zipfile
 from pathlib import Path
 
@@ -13,6 +14,8 @@ import numpy as np
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 logger = logging.getLogger(__name__)
+os.environ.setdefault("TF_NUM_INTRAOP_THREADS", "1")
+os.environ.setdefault("TF_NUM_INTEROP_THREADS", "1")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODEL_PATH = Path(
@@ -20,11 +23,12 @@ MODEL_PATH = Path(
 ).expanduser().resolve()
 MODEL = None
 MODEL_LOAD_ERROR = None
+MODEL_LOAD_SECONDS = None
 
 
 def load_model():
     """Load the trained model once when this module starts."""
-    global MODEL, MODEL_LOAD_ERROR
+    global MODEL, MODEL_LOAD_ERROR, MODEL_LOAD_SECONDS
 
     if MODEL is not None:
         return True
@@ -50,9 +54,14 @@ def load_model():
         from tensorflow import keras
 
         logger.info("Loading trained Keras model from %s", MODEL_PATH)
+        started_at = time.perf_counter()
         MODEL = keras.models.load_model(MODEL_PATH)
+        MODEL_LOAD_SECONDS = round(time.perf_counter() - started_at, 3)
         MODEL_LOAD_ERROR = None
-        logger.info("Trained Keras model loaded successfully.")
+        logger.info(
+            "Trained Keras model loaded successfully in %.3f seconds.",
+            MODEL_LOAD_SECONDS,
+        )
         return True
     except Exception as exc:
         MODEL = None

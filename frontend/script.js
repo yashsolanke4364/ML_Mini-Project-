@@ -1,4 +1,6 @@
-const API_BASE_URL = 'http://127.0.0.1:5000';
+const API_BASE_URL = String(
+  window.MNIST_CONFIG?.apiBaseUrl || window.location.origin
+).replace(/\/+$/, '');
 const PREDICT_API_URL = `${API_BASE_URL}/api/predict`;
 const HEALTH_API_URL = `${API_BASE_URL}/api/health`;
 const EVALUATION_API_URL = `${API_BASE_URL}/api/evaluation`;
