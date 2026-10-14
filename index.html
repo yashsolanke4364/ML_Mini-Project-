@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f3f6fb">
+  <meta name="description" content="Recognize handwritten digits with your trained MNIST model.">
+  <title>DigitLab | Handwritten Digit Recognition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=3">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+  <script src="script.js?v=3" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Main navigation">
+      <a class="brand" href="#" aria-label="DigitLab home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 36 36" fill="none">
+            <rect x="2" y="2" width="32" height="32" rx="11" fill="currentColor"/>
+            <path d="M13 12.5h10M13 18h10M13 23.5h6" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="25.5" cy="23.5" r="2.5" fill="#8FB9FF"/>
+          </svg>
+        </span>
+        <span class="brand-name">digit<span>lab</span></span>
+      </a>
+
+      <div class="sidebar-label">WORKSPACE</div>
+      <nav class="side-nav">
+        <a class="nav-link active" href="#workspace" aria-current="page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>
+          Digit recognizer
+        </a>
+        <a class="nav-link" href="#history">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.34-5.66L4 8.5"/><path d="M4 4v4.5h4.5M12 7v5l3 2"/></svg>
+          Recent predictions
+        </a>
+        <a class="nav-link" href="#evaluation">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5m0 14h16M8 16v-5m4 5V7m4 9V9m4 7V4"/></svg>
+          Model evaluation
+        </a>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="model-card">
+          <div class="model-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 3 4.5 7v10l7.5 4 7.5-4V7L12 3Z"/><path d="m4.8 7.2 7.2 4 7.2-4M12 11.5V21"/></svg>
+          </div>
+          <div>
+            <strong>MNIST CNN</strong>
+            <span>Trained model</span>
+          </div>
+          <span class="model-live-dot" aria-label="Model connected"></span>
+        </div>
+        <p class="sidebar-caption">Handwriting recognition<br>powered by your model.</p>
+      </div>
+    </aside>
+
+    <div class="main-column">
+      <header class="topbar">
+        <div class="breadcrumb"><span>Workspace</span><span class="breadcrumb-divider">/</span><strong>Digit recognizer</strong></div>
+        <div class="connection-pill" id="backendStatus" data-state="checking" role="status" aria-live="polite">
+          <span class="connection-dot" aria-hidden="true"></span>
+          <span id="backendStatusText">Checking backend...</span>
+        </div>
+      </header>
+
+      <main id="workspace" class="page-content">
+        <section class="page-heading" aria-labelledby="pageTitle">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-line"></span> AI PLAYGROUND</div>
+            <h1 id="pageTitle">Handwritten digit<br class="mobile-break"> recognition</h1>
+            <p class="page-description">Draw a digit or upload an image. Your trained model will do the rest.</p>
+          </div>
+          <div class="heading-chip">
+            <span class="chip-sparkle" aria-hidden="true">&#10022;</span>
+            <span>MNIST classifier</span>
+          </div>
+        </section>
+
+        <div class="dashboard-grid">
+          <section class="panel input-panel" aria-labelledby="inputTitle">
+            <div class="panel-heading">
+              <div>
+                <div class="section-kicker">INPUT</div>
+                <h2 id="inputTitle">Create your sample</h2>
+              </div>
+              <span class="step-badge">01</span>
+            </div>
+
+            <div class="input-tabs" role="tablist" aria-label="Choose input method">
+              <button class="input-tab active" id="drawTab" type="button" role="tab" aria-selected="true" aria-controls="drawPane">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m13.9 3.1 3 3-9.8 9.8-4 1 1-4 9.8-9.8ZM12.4 4.6l3 3"/></svg>
+                Draw digit
+              </button>
+              <button class="input-tab" id="uploadTab" type="button" role="tab" aria-selected="false" aria-controls="uploadPane">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 13V3m0 0L6.5 6.5M10 3l3.5 3.5M4 12v4h12v-4"/></svg>
+                Upload image
+              </button>
+            </div>
+
+            <div id="drawPane" class="tab-pane" role="tabpanel" aria-labelledby="drawTab">
+              <div class="canvas-frame">
+                <canvas id="drawingCanvas" aria-label="Black drawing canvas. Draw a single white handwritten digit from zero to nine." role="img"></canvas>
+                <div id="canvasHint" class="canvas-hint">
+                  <span class="hint-pencil" aria-hidden="true">&#9998;</span>
+                  <span>Draw a digit here</span>
+                </div>
+                <div class="canvas-corner canvas-corner-tl" aria-hidden="true"></div>
+                <div class="canvas-corner canvas-corner-tr" aria-hidden="true"></div>
+                <div class="canvas-corner canvas-corner-bl" aria-hidden="true"></div>
+                <div class="canvas-corner canvas-corner-br" aria-hidden="true"></div>
+              </div>
+
+              <div class="drawing-toolbar">
+                <div class="tool-group" role="group" aria-label="Drawing tools">
+                  <button class="tool-button active" id="drawTool" type="button" aria-pressed="true" aria-label="Draw with white brush" title="Draw">
+                    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m13.9 3.1 3 3-9.8 9.8-4 1 1-4 9.8-9.8ZM12.4 4.6l3 3"/></svg>
+                    <span>Draw</span>
+                  </button>
+                  <button class="tool-button" id="eraseTool" type="button" aria-pressed="false" aria-label="Erase with black brush" title="Erase">
+                    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7.2 15.8-4-4a1.8 1.8 0 0 1 0-2.5l5.9-5.9a1.8 1.8 0 0 1 2.5 0l5.2 5.2a1.8 1.8 0 0 1 0 2.5l-4.7 4.7H7.2ZM6 7.2l6.8 6.8M11.7 15.8h5"/></svg>
+                    <span>Erase</span>
+                  </button>
+                </div>
+                <button class="text-button" id="clearBtn" type="button">
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5.5h12M8 5.5V3.8h4v1.7m2.5 0-.6 10.7H6.1L5.5 5.5M8.2 8.5v5M11.8 8.5v5"/></svg>
+                  Clear
+                </button>
+              </div>
+
+              <div class="brush-row">
+                <label for="brushSize">Brush size</label>
+                <input id="brushSize" type="range" min="8" max="34" value="20" aria-label="Brush size">
+                <span id="brushSizeValue">20 px</span>
+                <span class="canvas-help">Mouse, touch or stylus</span>
+              </div>
+            </div>
+
+            <div id="uploadPane" class="tab-pane upload-pane" role="tabpanel" aria-labelledby="uploadTab" hidden>
+              <label class="upload-dropzone" id="uploadDropzone" for="imageUpload">
+                <input id="imageUpload" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" aria-describedby="uploadHelp uploadError">
+                <span class="upload-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 15v4h14v-4"/></svg>
+                </span>
+                <strong>Drop your image here</strong>
+                <span class="upload-secondary">or <span class="browse-link">browse files</span></span>
+                <span class="upload-formats">PNG, JPG or JPEG &middot; up to 5 MB</span>
+              </label>
+              <p class="field-message" id="uploadHelp">Choose a clear image containing one handwritten digit.</p>
+              <p class="field-message error-text" id="uploadError" role="alert" hidden></p>
+              <div class="preview-card" id="previewCard" hidden>
+                <img id="imagePreview" alt="Preview of the uploaded handwritten digit">
+                <div class="preview-meta">
+                  <strong id="previewName"></strong>
+                  <span id="previewDimensions"></span>
+                </div>
+                <button class="icon-button" id="removeUpload" type="button" aria-label="Remove uploaded image" title="Remove image">
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="panel-divider"></div>
+            <div class="input-footer">
+              <p id="predictionStatus" class="prediction-status" role="status" aria-live="polite">
+                <span class="status-check" aria-hidden="true">&#10003;</span>
+                Ready when you are
+              </p>
+              <button class="predict-button" id="predictBtn" type="button">
+                <span class="button-label">Predict digit</span>
+                <svg class="button-arrow" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M10 4l6 6-6 6"/></svg>
+                <span class="button-spinner" aria-hidden="true"></span>
+              </button>
+            </div>
+          </section>
+
+          <div class="right-column">
+            <section class="panel result-panel" aria-labelledby="resultTitle">
+              <div class="panel-heading">
+                <div>
+                  <div class="section-kicker">PREDICTION</div>
+                  <h2 id="resultTitle">Recognition result</h2>
+                </div>
+                <span class="step-badge">02</span>
+              </div>
+
+              <div class="result-content" id="resultContent" aria-live="polite">
+                <div class="result-placeholder" id="resultPlaceholder">
+                  <div class="placeholder-orbit" aria-hidden="true">
+                    <span class="orbit-dot"></span>
+                    <span class="placeholder-digit">?</span>
+                  </div>
+                  <strong>Your result will appear here</strong>
+                  <span>Draw or upload a digit, then predict.</span>
+                </div>
+                <div class="prediction-result" id="predictionResult" hidden>
+                  <div class="digit-orbit" aria-hidden="true"><span id="predictedDigit">-</span></div>
+                  <div class="result-copy">
+                    <span class="recognized-label">MODEL RECOGNIZED</span>
+                    <strong>Digit <span id="resultDigit">-</span></strong>
+                    <span class="result-caption">Predicted from your input sample</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="confidence-block">
+                <div class="confidence-heading">
+                  <span>Model confidence</span>
+                  <strong id="confidenceValue">--%</strong>
+                </div>
+                <div class="confidence-track" role="progressbar" id="confidenceBar" aria-label="Model confidence" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                  <span id="confidenceFill"></span>
+                </div>
+                <p class="confidence-note">Confidence is the model's probability for its top prediction.</p>
+              </div>
+            </section>
+
+            <section class="panel chart-panel" aria-labelledby="chartTitle">
+              <div class="panel-heading chart-heading">
+                <div>
+                  <div class="section-kicker">PROBABILITY DISTRIBUTION</div>
+                  <h2 id="chartTitle">All digit classes</h2>
+                </div>
+                <span class="chart-unit">PROBABILITY</span>
+              </div>
+              <div class="chart-wrap">
+                <canvas id="probabilityChart" role="img" aria-label="Prediction probabilities for digits zero through nine">
+                  Probability chart for digits zero through nine.
+                </canvas>
+              </div>
+              <p class="chart-fallback" id="chartFallback" hidden>Chart.js could not load. Prediction values are still available after a successful request.</p>
+            </section>
+          </div>
+
+          <section class="panel history-panel" id="history" aria-labelledby="historyTitle">
+            <div class="panel-heading history-heading">
+              <div>
+                <div class="section-kicker">SESSION ACTIVITY</div>
+                <h2 id="historyTitle">Recent predictions</h2>
+              </div>
+              <span class="history-count" id="historyCount">0 predictions</span>
+            </div>
+            <div class="history-list" id="historyList">
+              <div class="history-empty" id="historyEmpty">
+                <span aria-hidden="true">&#8635;</span>
+                <p>Your predictions will show up here.</p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section class="evaluation-section" id="evaluation" aria-labelledby="evaluationTitle">
+          <div class="evaluation-heading">
+            <div>
+              <div class="eyebrow"><span class="eyebrow-line"></span> EXPERIMENT REPORT</div>
+              <h2 id="evaluationTitle">Model evaluation</h2>
+              <p class="page-description">Held-out test results from the training notebook, separate from live predictions.</p>
+            </div>
+            <div class="evaluation-status" id="evaluationStatus" role="status" aria-live="polite">Loading experiment results...</div>
+          </div>
+
+          <div class="evaluation-grid setup-grid">
+            <section class="panel evaluation-panel" aria-labelledby="datasetTitle">
+              <div class="section-kicker">DATA AND PREPROCESSING</div>
+              <h3 id="datasetTitle">MNIST dataset</h3>
+              <dl class="detail-list" id="datasetDetails"></dl>
+            </section>
+            <section class="panel evaluation-panel" aria-labelledby="hyperparametersTitle">
+              <div class="section-kicker">EXPERIMENT SETUP</div>
+              <h3 id="hyperparametersTitle">Hyperparameters and rationale</h3>
+              <dl class="detail-list" id="hyperparameterDetails"></dl>
+              <ul class="rationale-list" id="hyperparameterReasons"></ul>
+            </section>
+          </div>
+          <section class="panel evaluation-panel" aria-labelledby="architectureTitle">
+            <div class="section-kicker">NOTEBOOK CONFIGURATIONS</div>
+            <h3 id="architectureTitle">Architectures and design rationale</h3>
+            <div class="architecture-grid" id="modelArchitectureCards"></div>
+          </section>
+
+          <p class="evaluation-message" id="evaluationMessage" hidden></p>
+          <p class="evaluation-chart-notice" id="evaluationChartNotice" hidden>Chart.js could not load; the recorded values and saved plots remain available.</p>
+
+          <section class="panel evaluation-panel" aria-labelledby="comparisonTitle">
+            <div class="panel-heading">
+              <div>
+                <div class="section-kicker">VALIDATION + HELD-OUT TEST</div>
+                <h3 id="comparisonTitle">ANN and CNN comparison</h3>
+              </div>
+              <span class="chart-unit" id="selectedModelLabel"></span>
+            </div>
+            <div class="evaluation-chart-wrap" id="comparisonChartWrap" hidden>
+                <canvas id="comparisonChart" role="img" aria-label="Validation accuracy for all models and held-out test metrics where available"></canvas>
+            </div>
+            <div class="table-scroll">
+              <table class="evaluation-table">
+                <thead>
+                  <tr><th>Model</th><th>Validation accuracy</th><th>Test accuracy</th><th>Macro precision</th><th>Macro recall</th><th>Macro F1</th></tr>
+                </thead>
+                <tbody id="comparisonRows"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <div class="evaluation-results" id="evaluationResults" hidden>
+            <div class="evaluation-grid">
+              <section class="panel evaluation-panel" aria-labelledby="accuracyCurveTitle">
+                <div class="section-kicker">TRAINING HISTORY</div>
+                <h3 id="accuracyCurveTitle">Accuracy by epoch</h3>
+                <div class="evaluation-chart-wrap curve-chart-wrap">
+                  <canvas id="accuracyCurveChart" role="img" aria-label="Training and validation accuracy curves by epoch"></canvas>
+                </div>
+              </section>
+              <section class="panel evaluation-panel" aria-labelledby="lossCurveTitle">
+                <div class="section-kicker">TRAINING HISTORY</div>
+                <h3 id="lossCurveTitle">Loss by epoch</h3>
+                <div class="evaluation-chart-wrap curve-chart-wrap">
+                  <canvas id="lossCurveChart" role="img" aria-label="Training and validation loss curves by epoch"></canvas>
+                </div>
+              </section>
+            </div>
+
+            <section class="panel evaluation-panel" aria-labelledby="selectedMetricsTitle">
+              <div class="section-kicker">SELECTED MODEL</div>
+              <h3 id="selectedMetricsTitle">Test-set metrics</h3>
+              <div class="metric-grid" id="selectedMetrics"></div>
+              <p class="interpretation" id="evaluationInterpretation"></p>
+            </section>
+
+            <section class="panel evaluation-panel" aria-labelledby="confusionTitle">
+              <div class="panel-heading">
+                <div>
+                  <div class="section-kicker">SELECTED MODEL</div>
+                  <h3 id="confusionTitle">Confusion matrix</h3>
+                </div>
+                <span class="chart-unit">ROWS: TRUE · COLUMNS: PREDICTED</span>
+              </div>
+              <div class="table-scroll">
+                <table class="confusion-table" id="confusionMatrix"></table>
+              </div>
+              <img class="evaluation-plot confusion-plot" id="confusionMatrixImage" alt="Saved confusion matrix heatmap generated by the notebook" hidden>
+              <p class="artifact-unavailable" id="confusionMatrixUnavailable" hidden>Numeric confusion-matrix cell counts are unavailable in the saved outputs; see the original notebook-generated plot below.</p>
+              <p class="artifact-caption">Counts are from the original 10,000-image MNIST test partition.</p>
+            </section>
+
+            <div class="evaluation-grid">
+              <section class="panel evaluation-panel" aria-labelledby="curvesPlotTitle">
+                <div class="section-kicker">SAVED NOTEBOOK PLOT</div>
+                <h3 id="curvesPlotTitle">Training and validation curves</h3>
+                <img class="evaluation-plot" id="trainingCurvesImage" alt="Saved training and validation accuracy and loss plots" hidden>
+                <p class="artifact-unavailable" id="trainingCurvesUnavailable" hidden>Training curve plot is unavailable for this run.</p>
+              </section>
+              <section class="panel evaluation-panel" aria-labelledby="samplesTitle">
+                <div class="section-kicker">SAVED NOTEBOOK PLOT</div>
+                <h3 id="samplesTitle">Correct and misclassified examples</h3>
+                <img class="evaluation-plot" id="predictionExamplesImage" alt="Actual correctly classified and misclassified examples from the MNIST test set" hidden>
+                <p class="artifact-unavailable" id="predictionExamplesUnavailable" hidden>Example image plot is unavailable for this run.</p>
+              </section>
+            </div>
+
+          </div>
+        </section>
+
+        <footer class="page-footer">
+          <span>DigitLab <span class="footer-dot">&middot;</span> Handwritten digit recognition</span>
+          <span>Powered by your trained MNIST model</span>
+        </footer>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
